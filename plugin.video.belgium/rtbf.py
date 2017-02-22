@@ -6,12 +6,12 @@ import channel
 import HTMLParser
 from bs4 import BeautifulSoup
 
-id2skip = [str(x) for x in [5683,2913,5614,5688,156]]
+id2skip = [str(x) for x in [5683,2913,5614,5688,156]] # Empty program
 
-menu = {'rtbfTV': {'name': 'TV Channels', 'icon': 'rtbf-all.png','module': 'rtbf','action': 'show_tv'},
-            'rtbfRadio': {'name': 'Radio Channels', 'icon': 'radios.png','module': 'rtbf','action': 'show_radio'},
-            'rtbfAll': {'name': 'All Shows', 'icon': 'rtbf.png','module': 'rtbf','action': 'show_programs'},
-            'rtbfCat': {'name': 'By Categories', 'icon': 'rtbf.png','module': 'rtbf','action': 'show_subcategories'},
+menu = {'rtbfTV': {'name': 'Chaînes TV', 'icon': 'rtbf-all.png','module': 'rtbf','action': 'show_tv'},
+            'rtbfRadio': {'name': 'Chaînes radios', 'icon': 'radios.png','module': 'rtbf','action': 'show_radio'},
+            'rtbfAll': {'name': 'Toutes les émissions', 'icon': 'rtbf.png','module': 'rtbf','action': 'show_programs'},
+            'rtbfCat': {'name': 'Par catégories', 'icon': 'rtbf.png','module': 'rtbf','action': 'show_subcategories'},
             'rtbfLive': {'name': 'Directs', 'icon': 'rtbf.png','module': 'rtbf','action': 'get_lives'}
             }
 
@@ -48,69 +48,69 @@ class Channel(channel.Channel):
     
     def get_categories(self):
         for menu_id, ch in menu.iteritems():
-          if channel.in_xbmc:
-            icon = channel.xbmc.translatePath(channel.os.path.join(channel.home, 'resources/' + ch['icon']))
-            channel.addDir(ch['name'], icon, channel_id=menu_id, action=ch['action'])
-          else:
-            print ch['name'], menu_id, 'show_programs'
+            if channel.in_xbmc:
+                icon = channel.xbmc.translatePath(channel.os.path.join(channel.home, 'resources/' + ch['icon']))
+                channel.addDir(ch['name'], icon, channel_id=menu_id, action=ch['action'])
+            else:
+                print ch['name'], menu_id, 'show_programs'
     
-    def get_programs(self, skip_empty_id = True):
-      data = channel.get_url(self.main_url + '/auvio/emissions/')
-      regex = r""",([^\,]+-original.(?:jpg|gif|png|jpeg))[^/]*/>\s*\n\s*</div>\s*\n\s*</figure>\s*\n\s*<header[^>]+>\s*\n\s*<span[^<]+</span>\s*\n\s*<a href="([^"]+)"\s*>\s*\n\s*<h4[^>]+>([^<]+)"""
-      for icon, url, name in re.findall(regex, data):
-        id = url.split('?id=')[1]
-        if skip_empty_id and id in id2skip:
-          continue
-        channel.addDir(name, icon, channel_id=self.channel_id, url=url, action='show_videos', id=id)
+    def get_programs(self, skip_empty_id=True):
+        data = channel.get_url(self.main_url + '/auvio/emissions/')
+        regex = r""",([^\,]+-original.(?:jpg|gif|png|jpeg))[^/]*/>\s*\n\s*</div>\s*\n\s*</figure>\s*\n\s*<header[^>]+>\s*\n\s*<span[^<]+</span>\s*\n\s*<a href="([^"]+)"\s*>\s*\n\s*<h4[^>]+>([^<]+)"""
+        for icon, url, name in re.findall(regex, data):
+            id = url.split('?id=')[1]
+            if skip_empty_id and id in id2skip:
+                continue
+            channel.addDir(name, icon, channel_id=self.channel_id, url=url, action='show_videos', id=id)
 
     def show_tv(self, datas):
-      for channel_id, ch in channelsTV.iteritems():
-        if channel.in_xbmc:
-          icon = channel.xbmc.translatePath(channel.os.path.join(channel.home, 'resources/' + ch['icon']))
-          channel.addDir(ch['name'], icon, channel_id=channel_id, action='show_channel')
-        else:
-          print ch['name'], channel_id, 'show_channel'
+        for channel_id, ch in channelsTV.iteritems():
+            if channel.in_xbmc:
+                icon = channel.xbmc.translatePath(channel.os.path.join(channel.home, 'resources/' + ch['icon']))
+                channel.addDir(ch['name'], icon, channel_id=channel_id, action='show_channel')
+            else:
+                print ch['name'], channel_id, 'show_channel'
 
     def show_radio(self, datas):
-      for channel_id, ch in channelsRadio.iteritems():
-       if channel.in_xbmc:
-         icon = channel.xbmc.translatePath(channel.os.path.join(channel.home, 'resources/' + ch['icon']))
-         channel.addDir(ch['name'], icon, channel_id=channel_id, action='show_channel')
-       else:
-         print ch['name'], channel_id, 'show_channel'
+        for channel_id, ch in channelsRadio.iteritems():
+            if channel.in_xbmc:
+                icon = channel.xbmc.translatePath(channel.os.path.join(channel.home, 'resources/' + ch['icon']))
+                channel.addDir(ch['name'], icon, channel_id=channel_id, action='show_channel')
+            else:
+                print ch['name'], channel_id, 'show_channel'
                    
     def get_subcategories(self, datas):
         for category_id, cat in categories.iteritems():
-           channel.addDir(name=cat['name'], iconimage='DefaultVideo.png', channel_id=category_id, action='show_category')
+            channel.addDir(name=cat['name'], iconimage='DefaultVideo.png', channel_id=category_id, action='show_category')
 
     def get_category(self, datas):
-            urlName = datas.get('name').replace(' ','-')
-            data = channel.get_url(self.main_url+'/auvio/categorie/'+urlName+'?id='+datas.get('channel_id'))
-            soup = BeautifulSoup(data, 'html.parser')
-            main = soup.main
-            section = main.section
-            articles = section.find_all('article')
-            for article in articles:
-                icons = article.find('img',{'data-srcset':True})['data-srcset']
-                regex = r""",([^,]+?\.(?:jpg|gif|png|jpeg))\s640w"""
-                icon = str(re.findall(regex, icons)[0])
-                container = article.h3
-                url = container.find('a',{'href':True})['href']
-                id = url.split('?id=')[1]
-                name = container.find('a', {'title':True})['title']     
-                channel.addDir(name, icon, channel_id=datas.get('channel_id'), url=url, action='show_videos', id=id)
-    
+        urlName = datas.get('name').replace(' ','-')
+        data = channel.get_url(self.main_url+'/auvio/categorie/'+urlName+'?id='+datas.get('channel_id'))
+        soup = BeautifulSoup(data, 'html.parser')
+        main = soup.main
+        section = main.section
+        articles = section.find_all('article')
+        for article in articles:
+            icons = article.find('img',{'data-srcset':True})['data-srcset']
+            regex = r""",([^,]+?\.(?:jpg|gif|png|jpeg))\s640w"""
+            icon = str(re.findall(regex, icons)[0])
+            container = article.h3
+            url = container.find('a',{'href':True})['href']
+            id = url.split('?id=')[1]
+            name = container.find('a', {'title':True})['title']     
+            channel.addDir(name, icon, channel_id=datas.get('channel_id'), url=url, action='show_videos', id=id)
+
     def get_channel(self, datas):
-            data = channel.get_url(self.main_url + '/auvio/emissions/')
-            try:
-                    ch = channelsTV[datas.get('channel_id')]['name']
-            except:
-                    ch = channelsRadio[datas.get('channel_id')]['name']
-            regex = r""",([^\,]+-original.(?:jpg|gif|png|jpeg))[^/]*/>\s*\n\s*</div>\s*\n\s*</figure>\s*\n\s*<header[^>]+>\s*\n\s*<span class="rtbf-media-item__channel">([^<]+)*</span>\s*\n\s*<a href="([^"]+)"\s*>\s*\n\s*<h4[^>]+>([^<]+)"""
-            for icon, chan, url, name in re.findall(regex, data):
-                    if ch in chan:
-                       id = url.split('?id=')[1]
-                       channel.addDir(name, icon, channel_id=self.channel_id, url=url, action='show_videos', id=id)
+        data = channel.get_url(self.main_url + '/auvio/emissions/')
+        try:
+            ch = channelsTV[datas.get('channel_id')]['name']
+        except:
+            ch = channelsRadio[datas.get('channel_id')]['name']
+        regex = r""",([^\,]+-original.(?:jpg|gif|png|jpeg))[^/]*/>\s*\n\s*</div>\s*\n\s*</figure>\s*\n\s*<header[^>]+>\s*\n\s*<span class="rtbf-media-item__channel">([^<]+)*</span>\s*\n\s*<a href="([^"]+)"\s*>\s*\n\s*<h4[^>]+>([^<]+)"""
+        for icon, chan, url, name in re.findall(regex, data):
+            if ch in chan:
+                id = url.split('?id=')[1]
+                channel.addDir(name, icon, channel_id=self.channel_id, url=url, action='show_videos', id=id)
 
 
     def get_lives(self, datas):
@@ -126,17 +126,28 @@ class Channel(channel.Channel):
     
     def get_videos(self, datas):
         url = datas.get('url')
+        print 'get_videos url:', url
         data = channel.get_url(url)
+        print 'After get_url [%s]' % len(data)
         soup = BeautifulSoup(data)
+        print 'soup'
         sections = soup.find_all('section',{'class':True,'id':True})
+        print 'soup find all'
         for section in sections:
-          if section['id']!='widget-ml-avoiraussi-':
-             regex = r""">([^<]+)</time>\s*\n\s*<h3[^<]*<a href="([^"]+)"[^>]*>([^<]+)</a></h3>"""
-             for date, url, title in re.findall(regex, str(section)):
+            print '--section--'
+            if section['id']=='widget-ml-avoiraussi-':
+                continue
+            print '--section 2--'
+            regex = r""">([^<]+)</time>\s*\n\s*<h3[^<]*<a href="([^"]+)"[^>]*>([^<]+)</a></h3>"""
+            try:
+                results = re.findall(regex, str(section))
+            except:
+                continue
+            print '--section 3--'
+            for date, url, title in results:
                 title = title + ' - ' + date
                 vurl = channel.array2url(channel_id=self.channel_id, url=url, action='play_video')
                 channel.addLink(title.replace('&#039;', "'").replace('&#034;', '"'), vurl, None)
-    
    
                 
     def play_video(self, datas):
@@ -185,7 +196,7 @@ class Channel(channel.Channel):
             freecaster_stream =  re.search(regex, data)
             freecaster_stream = freecaster_stream.group(1)
             freecaster_stream=freecaster_stream.replace("\\", "") 
-            channel.playUrl(freecaster_stream)
+            return freecaster_stream
         else:
             print "not a freecaster stream"
             regex = r"""streamUrlHls&quot;:&quot;([^&]+)"""
@@ -197,7 +208,7 @@ class Channel(channel.Channel):
                 best_resolution_path = data.split("\n")[-2]
                 hls_stream_url = stream_url[:stream_url.rfind('open')] + best_resolution_path[6:]
                 print "HLS stream url: >" + hls_stream_url + "<"
-                channel.playUrl(hls_stream_url)
+                return hls_stream_url
             else:
                 regex = r"""streamUrl&quot;:&quot;([^&]+)"""
                 stream_url = re.search(regex,data)
@@ -206,7 +217,7 @@ class Channel(channel.Channel):
                     stream_url = stream_url.replace("\\", "")
                     print "strange stream" 
                     print "stream url: >" + stream_url + "<"
-                    channel.playUrl(stream_url)
+                    return stream_url
                 else:
                     print "normal stream"
                     token_json_data = channel.get_url(self.main_url + '/api/media/streaming?streamname=' + stream_name, referer=page_url)
