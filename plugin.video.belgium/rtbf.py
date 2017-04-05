@@ -38,6 +38,12 @@ categories = {'35':{'name': 'Series', 'icon': 'rtbf.png','module': 'rtbf'},
              '23':{'name': 'Musique', 'icon': 'rtbf.png','module': 'rtbf'},
              '32':{'name': 'Enfants', 'icon': 'rtbf.png','module': 'rtbf'}
             }
+liveURL = {'La Une':'http://rtbf.l3.freecaster.net/live/rtbf/geo/open/bc1e985c9592276a91bf1db4a6dd366efc9fc11e/laune.m3u8?token=0db0ad0d41931810f148c',
+           'La Deux':'http://rtbf.l3.freecaster.net/live/rtbf/geo/open/87d88b36830bb0d0ff43b139615cffd0a4a93440/ladeux.m3u8?token=0f4d7af3370022aee98bf',
+           'La Trois':'http://rtbf.l3.freecaster.net/live/rtbf/geo/open/2e54586bb99b57a87004a7cafba990a213361120/latrois.m3u8?token=00ed017e3c279a25b31fa',
+           'Pure':'http://rtbf.l3.freecaster.net/live/rtbf/geo/open/abb1916b08d3b03ffd00218d3d48deda80aa3898/purevision.m3u8?token=04fe5b90b1d52355f235d',
+           'Vivacité':'http://rtbf.l3.freecaster.net/live/rtbf/geo/open/7c0c51a7546e72c823e08b6dff63d8d2d86413e9/vivacitevision.m3u8?token=0be710476533d5870f7d3'
+          }
 
 class Channel(channel.Channel):
     def get_main_url(self):
@@ -56,7 +62,7 @@ class Channel(channel.Channel):
     
     def get_programs(self, skip_empty_id=True):
         data = channel.get_url(self.main_url + '/auvio/emissions/')
-        regex = r"""(?s),([^\,]+-original.(?:jpg|gif|png|jpeg))[^/]*/>.*?<a href="([^"]+)"\s*>.*?<h4[^>]+>([^<]+)"""
+        regex = r"""(?s),([^,]+?\.(?:jpg|gif|png|jpeg))\s648w".*?<a href="([^"]+)"\s*>.*?<h4[^>]+>([^<]+)"""
         for icon, url, name in re.findall(regex, data):
             id = url.split('?id=')[1]
             if skip_empty_id and id in id2skip:
@@ -106,7 +112,7 @@ class Channel(channel.Channel):
             ch = channelsTV[datas.get('channel_id')]['name']
         except:
             ch = channelsRadio[datas.get('channel_id')]['name']
-        regex = r"""(?s),([^\,]+-original.(?:jpg|gif|png|jpeg))[^/]*/>.*?<a href="([^"]+)"\s*>.*?<h4[^>]+>([^<]+).*?<div class="rtbf-media-item__meta-bottom">([^<]+)*</div>"""
+        regex = r"""(?s),([^,]+?\.(?:jpg|gif|png|jpeg))\s648w".*?<a href="([^"]+)"\s*>.*?<h4[^>]+>([^<]+).*?<div class="rtbf-media-item__meta-bottom">([^<]+)*</div>"""
         for icon, url, name, chan in re.findall(regex, data):
             if ch in chan.strip():
                 id = url.split('?id=')[1]
@@ -175,9 +181,19 @@ class Channel(channel.Channel):
         url = datas.get('url')
         data = channel.get_url(url)
         regex = r"""src="(https://www.rtbf.be/auvio/embed/direct[^"]+)"""
-        iframe_url = re.findall(regex, data)[0]
-        rtmp = self.get_live_rtmp(iframe_url)
-        channel.playUrl(rtmp)
+        iframe_urls = re.findall(regex, data)
+        #avoid issue if a login is required like belgian reddevils match
+        if len(iframe_urls)>0:
+            rtmp = self.get_live_rtmp(iframe_urls[0])
+            channel.playUrl(rtmp)
+        else:
+            regex = r"""(?s)<header class="rtbf-media-detail__header container-fluid www-container-md www-rel js-media-header">.*?<li><span class="www-cap">([^<]+)*</span>"""
+            channelString = re.findall(regex, data)[0]
+            stream_url = liveURL[channelString]
+            data = channel.get_url(stream_url)
+            best_resolution_path = data.split("\n")[-2]
+            hls_stream_url = stream_url[:stream_url.rfind('open')] + best_resolution_path[6:]
+            channel.playUrl(hls_stream_url)
 
 
 
