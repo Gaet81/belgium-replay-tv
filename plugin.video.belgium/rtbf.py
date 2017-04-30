@@ -23,7 +23,7 @@ channelsRadio = {'lapremiere': {'name': 'La Première', 'icon': 'lapremiere.png'
             'vivacite': {'name': 'Vivacité', 'icon': 'vivacite.png','module':'rtbf'},
             'musiq3': {'name': 'Musiq 3', 'icon': 'musiq3.png','module':'rtbf'},
             'classic21': {'name': 'Classic 21', 'icon': 'classic21.png','module':'rtbf'},
-            'purefm': {'name': 'Pure FM', 'icon': 'purefm.png','module':'rtbf'},
+            'purefm': {'name': 'Pure', 'icon': 'purefm.png','module':'rtbf'},
             }
 categories = {'35':{'name': 'Series', 'icon': 'rtbf.png','module': 'rtbf'},
              '36':{'name': 'Films', 'icon': 'rtbf.png','module': 'rtbf'},
@@ -62,8 +62,9 @@ class Channel(channel.Channel):
     
     def get_programs(self, skip_empty_id=True):
         data = channel.get_url(self.main_url + '/auvio/emissions/')
-        regex = r"""(?s),([^,]+?\.(?:jpg|gif|png|jpeg))\s648w".*?<a href="([^"]+)"\s*>.*?<h4[^>]+>([^<]+)"""
-        for icon, url, name in re.findall(regex, data):
+        regex = r"""<header class="rtbf-media-item__header">\s*<a\s+href="([^"]+)[^>]+>\s*<h4[^>]*>([^<]+)"""
+        icon = None
+        for url, name in re.findall(regex, data):
             id = url.split('?id=')[1]
             if skip_empty_id and id in id2skip:
                 continue
@@ -112,8 +113,9 @@ class Channel(channel.Channel):
             ch = channelsTV[datas.get('channel_id')]['name']
         except:
             ch = channelsRadio[datas.get('channel_id')]['name']
-        regex = r"""(?s),([^,]+?\.(?:jpg|gif|png|jpeg))\s648w".*?<a href="([^"]+)"\s*>.*?<h4[^>]+>([^<]+).*?<div class="rtbf-media-item__meta-bottom">([^<]+)*</div>"""
-        for icon, url, name, chan in re.findall(regex, data):
+        regex = r"""(?s)<header class="rtbf-media-item__header">\s*<a\s+href="([^"]+)[^>]+>\s*<h4[^>]*>([^<]+).*?<div class="rtbf-media-item__meta-bottom">([^<]+)"""
+        icon = None
+        for url, name, chan in re.findall(regex, data):
             if ch in chan.strip():
                 id = url.split('?id=')[1]
                 channel.addDir(name, icon, channel_id=self.channel_id, url=url, action='show_videos', id=id)
