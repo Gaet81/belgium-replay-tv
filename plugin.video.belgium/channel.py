@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 
 import urllib, urllib2, re, os, sys
 from htmlentitydefs import name2codepoint
@@ -13,16 +13,30 @@ try:
 except:
     in_xbmc = False 
 
+
 def get_url(url, referer='http://www.google.com'):
     if not in_xbmc:
-        print 'Get url:', url
+        print ('Get url:', url)
     req = urllib2.Request(url)
     req.addheaders = [('Referer', referer),
             ('Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.3) Gecko/20100101 Firefox/11.0 ( .NET CLR 3.5.30729)')]
-    response = urllib2.urlopen(req)
+    response = urllib2.urlopen(req, timeout = 30)
     data = response.read()
     response.close()
     return data
+
+def get_status(url, referer='http://www.google.com'):
+    req = urllib2.Request(url)
+    req.addheaders = [('Referer', referer),
+            ('Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.3) Gecko/20100101 Firefox/11.0 ( .NET CLR 3.5.30729)')]
+    try:
+        response = urllib2.urlopen(req)
+    except urllib2.HTTPError:
+        #response.close()
+        return False
+    else:
+        response.close()
+        return True       
 
 def uniquify(list):
     new_list = []
@@ -62,9 +76,9 @@ def time2str(t):
 def addLink(name, url, iconimage, **kwargs):
     name = name.replace('&#039;', "'").replace('&#034;', '"')
     if not in_xbmc:
-        print 'Title: [' + name + ']'
-        print 'Img:', iconimage
-        print 'Url:', url
+        print ('Title: [' + name + ']')
+        print ('Img:', iconimage)
+        print ('Url:', url)
         print
         return True
     if 'Title' not in kwargs:
@@ -72,7 +86,7 @@ def addLink(name, url, iconimage, **kwargs):
     ok = True
     liz = xbmcgui.ListItem(name, iconImage='DefaultVideo.png', thumbnailImage=iconimage)
     liz.setInfo(type='Video', infoLabels=kwargs)
-    liz.setProperty('IsPlayable', 'true')
+    liz.setProperty('IsPlayable', 'True')
     ok = xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=url, listitem=liz)
     return ok
 
@@ -86,11 +100,11 @@ def addDir(name, iconimage, **args):
     name = name.replace('&#039;', "'").replace('&#034;', '"')
     u = array2url(**args)
     if not in_xbmc:
-        print 'Title: [' + name + ']'
-        print 'Img:', iconimage
-        print 'Url:', u
+        print ('Title: [' + name + ']')
+        print ('Img:', iconimage)
+        print ('Url:', u)
         for key in args:
-            print key + ': ' + args[key]
+            print (key + ': ' + args[key])
         print
         return True
     
@@ -100,24 +114,26 @@ def addDir(name, iconimage, **args):
     return ok
 
 def playUrl(url):
-    print 'Play url:', url
+    print ('Play url:', url)
     if not in_xbmc:
         return True
     liz = xbmcgui.ListItem(path=url)
     return xbmcplugin.setResolvedUrl(handle=int(sys.argv[1]), succeeded=True, listitem=liz)
-    
+
+
 class Channel(object):
     def __init__(self, context):
         self.channel_id = context.get('channel_id')
         self.main_url = self.get_main_url()
+        xbmcplugin.setContent(int(sys.argv[1]), 'tvshows')
         if in_xbmc:
             self.icon = xbmc.translatePath(os.path.join(home, 'resources/' + context['icon']))
         else:
             self.icon = context.get('icon')
         action = context.get('action')
-        print 'action:', action
-        print 'context:'
-        print context
+        print ('action:', action)
+        print ('context:')
+        print (context)
         print
         if action == 'show_categories':
             self.get_categories()
@@ -133,6 +149,18 @@ class Channel(object):
             self.play_live(context)
         elif action == 'scan_empty':
             self.scan_empty(context)
+        elif action == 'show_programs':
+            self.get_programs(context)
+        elif action == 'show_tv':
+            self.show_tv(context)
+        elif action == 'show_radio':
+            self.show_radio(context)
+        elif action == 'show_program':
+            self.get_programs(context)
+        elif action == 'show_category':
+            self.get_category(context)
+        elif action == 'show_channel':
+            self.get_channel(context)
             
     def set_main_url(self):
         return ''
@@ -171,12 +199,30 @@ class Channel(object):
         nb = len(cats)
         cat_done = []
         for cat in cats:
-            print i, '/', nb
+            print (i, '/', nb)
             i += 1
             vids = []
             self.get_videos(cat)
             if not len(vids):
                 new_id2skip.append(cat['id'])
             cat_done.append(cat['id'])
-            print 'done: ' + ','.join(cat_done)
-            print 'id2skip: ' + ','.join(new_id2skip)
+            print ('done: ' + ','.join(cat_done))
+            print ('id2skip: ' + ','.join(new_id2skip))
+    
+    def get_programs(self,datas):
+      pass
+    
+    def show_tv(self,datas):
+        pass
+    
+    def show_radio(self,datas):
+        pass
+    
+    def get_programs(self,datas):
+        pass
+    
+    def get_category(self,datas):
+        pass
+    
+    def get_channel(self,datas):
+        pass
