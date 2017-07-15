@@ -4,6 +4,9 @@
 import re
 import channel
 import HTMLParser
+import json
+import datetime
+import time
 from bs4 import BeautifulSoup
 
 id2skip = [str(x) for x in [5683,2913,5614,5688,156]] # Empty program
@@ -42,7 +45,13 @@ liveURL = {'La Une':'http://rtbf.l3.freecaster.net/live/rtbf/geo/open/bc1e985c95
            'La Deux':'http://rtbf.l3.freecaster.net/live/rtbf/geo/open/87d88b36830bb0d0ff43b139615cffd0a4a93440/ladeux.m3u8?token=0f4d7af3370022aee98bf',
            'La Trois':'http://rtbf.l3.freecaster.net/live/rtbf/geo/open/2e54586bb99b57a87004a7cafba990a213361120/latrois.m3u8?token=00ed017e3c279a25b31fa',
            'Pure':'http://rtbf.l3.freecaster.net/live/rtbf/geo/open/abb1916b08d3b03ffd00218d3d48deda80aa3898/purevision.m3u8?token=04fe5b90b1d52355f235d',
-           'Vivacité':'http://rtbf.l3.freecaster.net/live/rtbf/geo/open/7c0c51a7546e72c823e08b6dff63d8d2d86413e9/vivacitevision.m3u8?token=0be710476533d5870f7d3'
+           'Vivacité':'http://rtbf.l3.freecaster.net/live/rtbf/geo/open/7c0c51a7546e72c823e08b6dff63d8d2d86413e9/vivacitevision.m3u8?token=0be710476533d5870f7d3',
+           'nocstream3':'https://rtbf.l3.freecaster.net/live/rtbf/geo/open/59cc488f859bd71211d48ca0ebd2b6d5728e5241/nocstream3.m3u8?token=0b3137dd269d96afdd1b1',
+           'nocstream4':'https://rtbf.l3.freecaster.net/live/rtbf/geo/open/a700d54572cc1c6fb8b2ca73aaf9c1325f1371c6/nocstream4.m3u8?token=004c47f99b3fa802669a7',
+           'nocstream5':'https://rtbf.l3.freecaster.net/live/rtbf/geo/open/01649bf8f4ce03376daef4bb337ea483560ec90a/nocstream5.m3u8?token=0924690eb354eda55832f',
+           'nocstream7':'https://rtbf.l3.freecaster.net/live/rtbf/geo/open/a9a28d34f093be64bbb58f8652fcdf34eac18ac4/nocstream7.m3u8?token=0fc817d4af4d3acace5b5',
+           'La Première':'https://rtbf.l3.freecaster.net/live/rtbf/geo/open/31dfb588bbe265869cac1c3e719610a4b1c00d0e/lapremierevision.m3u8?token=0bd519d2ae89dc67d9b77',
+           'Tarmac':'https://rtbf.l3.freecaster.net/live/rtbf/geo/open/a687628a4e9144c8d85808c4c3f01ef0559a8830/tarmac.m3u8?token=0baaa0154a8b2e26e8c6d'
           }
 
 class Channel(channel.Channel):
@@ -123,11 +132,29 @@ class Channel(channel.Channel):
 
     def get_lives(self, datas):
         def parse_lives(data):
-            regex = r""",([^,]+?\.(?:jpg|gif|png|jpeg))\s648w"[^/]*/>(?s).*?"rtbf-media-item__title">\s*<a href="([^"]+)"\s*title="([^"]+)"""
-            for icon, url, name in re.findall(regex, data, flags=re.DOTALL):
-                vurl = channel.array2url(channel_id=self.channel_id, url=url, action='play_live')
-                channel.addLink(name.replace('&#039;', "'").replace('&#034;', '"') , vurl, icon) # + ' - ' + date
-        live_url = self.main_url + '/auvio/direct/'
+            j_data = json.loads(data)
+            for item in j_data:
+                starttime = item['start_date']
+                now = datetime.datetime.now()
+                print 'now: ',now
+                print 'starttime: ',starttime
+                f = "%Y-%m-%dT%H:%M:%S"
+                print 'f: ',f
+                try:
+                    starttime_dt = datetime.datetime.strptime(starttime[0:19], f)
+                except TypeError:
+                    starttime_dt = datetime.datetime(*(time.strptime(starttime[0:19], f)[0:6]))
+                print 'startdate: ',starttime_dt
+                if starttime_dt<now: 
+                    url = item['url_streaming']['url_hls']
+                    icon = item['images']['illustration']['16x9']['370x208']
+                    title = item['title'].encode('UTF-8')
+                    if item['subtitle']:
+                        title += ' - {subtitle}'.format(subtitle=item['subtitle'].encode('UTF-8')) 
+                    plot = item['description'].encode('UTF-8')
+                    vurl = channel.array2url(channel_id=self.channel_id, url=url, action='play_live')
+                    channel.addLink(title, vurl, icon, Plot = plot, Label = title, Title = title, Cast = item['animator'], Genre = item['category']['label'].encode('UTF-8'))
+        live_url = 'https://www.rtbf.be/api/partner/generic/live/planninglist?target_site=media&origin_site=media&category_id=0&start_date=&offset=0&limit=10&partner_key=82ed2c5b7df0a9334dfbda21eccd8427&v=7'
         data = channel.get_url(live_url)
         parse_lives(data)
 
@@ -180,22 +207,25 @@ class Channel(channel.Channel):
 
 
     def play_live(self, datas):
-        url = datas.get('url')
-        data = channel.get_url(url)
-        regex = r"""src="(https://www.rtbf.be/auvio/embed/direct[^"]+)"""
-        iframe_urls = re.findall(regex, data)
-        #avoid issue if a login is required like belgian reddevils match
-        if len(iframe_urls)>0:
-            rtmp = self.get_live_rtmp(iframe_urls[0])
-            channel.playUrl(rtmp)
-        else:
-            regex = r"""(?s)<header class="rtbf-media-detail__header container-fluid www-container-md www-rel js-media-header">.*?<li><span class="www-cap">([^<]+)*</span>"""
-            channelString = re.findall(regex, data)[0]
-            stream_url = liveURL[channelString]
-            data = channel.get_url(stream_url)
-            best_resolution_path = data.split("\n")[-2]
-            hls_stream_url = stream_url[:stream_url.rfind('open')] + best_resolution_path[6:]
-            channel.playUrl(hls_stream_url)
+        channel.playUrl(datas.get('url'))
+##        url = datas.get('url')
+##        data = channel.get_url(url)
+##        regex = r"""src="(https://www.rtbf.be/auvio/embed/direct[^"]+)"""
+##        iframe_urls = re.findall(regex, data)
+##        #avoid issue if a login is required like belgian reddevils match
+##        if len(iframe_urls)<0:
+##            rtmp = self.get_live_rtmp(iframe_urls[0])
+##            channel.playUrl(rtmp)
+##        else:
+##            regex = r"""(?s)<header class="rtbf-media-detail__header container-fluid www-rel js-media-header">.*?<li><span class="www-cap">([^<]+)*</span>"""
+##            channelString = re.findall(regex, data)[0]
+##            stream_url = liveURL[channelString]
+##            print ("HLS stream url: >" + stream_url + "<")
+##            data = channel.get_url(stream_url)
+##            best_resolution_path = data.split("\n")[-2]
+##            hls_stream_url = stream_url[:stream_url.rfind('open')] + best_resolution_path[6:]
+##            #channel.playUrl(hls_stream_url)
+##            channel.playUrl(stream_url)
 
 
 
