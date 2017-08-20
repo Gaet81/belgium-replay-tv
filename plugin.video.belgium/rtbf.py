@@ -145,7 +145,7 @@ class Channel(channel.Channel):
                 except TypeError:
                     starttime_dt = datetime.datetime(*(time.strptime(starttime[0:19], f)[0:6]))
                 print 'startdate: ',starttime_dt
-                if starttime_dt<now: 
+                if starttime_dt<now and 'url_hls' in item['url_streaming']:
                     url = item['url_streaming']['url_hls']
                     icon = item['images']['illustration']['16x9']['370x208']
                     title = item['title'].encode('UTF-8')
